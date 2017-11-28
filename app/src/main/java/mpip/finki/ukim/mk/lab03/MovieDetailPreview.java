@@ -6,6 +6,9 @@ import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 import android.os.AsyncTask;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
+import android.provider.SyncStateContract;
 import android.support.v4.view.MenuItemCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.ShareActionProvider;
@@ -20,6 +23,7 @@ import com.google.gson.GsonBuilder;
 import com.squareup.picasso.Picasso;
 
 import java.util.List;
+import java.util.concurrent.ExecutionException;
 
 import mpip.finki.ukim.mk.lab03.model.Movie;
 import mpip.finki.ukim.mk.lab03.model.MovieDetail;
@@ -40,9 +44,10 @@ public class MovieDetailPreview extends AppCompatActivity {
     private ShareActionProvider mShareActionProvider;
 
     private String movieTitle;
-    private String year;
+    private String movieYear;
     private String director;
     Intent sharingIntent;
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -50,12 +55,9 @@ public class MovieDetailPreview extends AppCompatActivity {
         setContentView(R.layout.activity_movie_detail_preview);
 
 
-        String id = this.getIntent().getStringExtra("id");
-        MenuItem item = findViewById(R.id.menu_item_share);
-        mShareActionProvider = (ShareActionProvider) MenuItemCompat.getActionProvider(item);
+
 //        textView.setText();
 
-        makeMoviesSearch(id);
     }
 
     @Override
@@ -65,27 +67,51 @@ public class MovieDetailPreview extends AppCompatActivity {
 
         MenuItem item = menu.findItem(R.id.menu_item_share);
         mShareActionProvider = (ShareActionProvider) MenuItemCompat.getActionProvider(item);
-
-
-
+        String id = this.getIntent().getStringExtra("id");
+        makeMoviesSearch(id);
         return true;
     }
 
+//    @Override
+//    public boolean onPrepareOptionsMenu(Menu menu) {
+//        MenuItem item = menu.findItem(R.id.menu_item_share);
+//        mShareActionProvider = (ShareActionProvider) MenuItemCompat.getActionProvider(item);
+//        return true;
+//    }
+
     private void setShareIntentd(Intent shareIntent) {
+//        invalidateOptionsMenu();
         mShareActionProvider.setShareIntent(shareIntent);
+    }
+
+    public void setPoster(final String url) {
+        Handler uiHandler = new Handler(Looper.getMainLooper());
+        uiHandler.post(new Runnable(){
+            @Override
+            public void run() {
+                ImageView poster = findViewById(R.id.poster2);
+                Picasso
+                        .with(getApplicationContext())
+                        .load(url)
+                        .placeholder(R.mipmap.ic_launcher)
+                        .into(poster);
+            }
+        });
+
     }
 
     public class MovieQueryTask extends AsyncTask<String, Void, Void> {
 
         @Override
         protected Void doInBackground(String... params) {
-            invalidateOptionsMenu();
+//            invalidateOptionsMenu();
             String id = params[0];
+
             ConnectivityManager connectivityManager =
                     (ConnectivityManager) getApplicationContext().getSystemService(CONNECTIVITY_SERVICE);
 
-            if(connectivityManager.getNetworkInfo(ConnectivityManager.TYPE_MOBILE).getState() == NetworkInfo.State.CONNECTED ||
-                    connectivityManager.getNetworkInfo(ConnectivityManager.TYPE_WIFI).getState() == NetworkInfo.State.CONNECTED){
+            if (connectivityManager.getNetworkInfo(ConnectivityManager.TYPE_MOBILE).getState() == NetworkInfo.State.CONNECTED ||
+                    connectivityManager.getNetworkInfo(ConnectivityManager.TYPE_WIFI).getState() == NetworkInfo.State.CONNECTED) {
                 Gson gson = new GsonBuilder().create();
                 Retrofit retrofit = new Retrofit.Builder()
                         .baseUrl("http://www.omdbapi.com")
@@ -102,41 +128,34 @@ public class MovieDetailPreview extends AppCompatActivity {
                         s[0] = response.body();
 
                         movieTitle = s[0].getTitle();
-                        year = s[0].getYear();
+                        movieYear = s[0].getYear();
                         director = s[0].getDirector();
 
 
-
-                        TextView title = (TextView)findViewById(R.id.title);
+                        TextView title = (TextView) findViewById(R.id.title);
                         title.setText("Title: " + s[0].getTitle());
 
-                        TextView year = (TextView)findViewById(R.id.year);
+                        TextView year = (TextView) findViewById(R.id.year);
                         year.setText("Year: " + s[0].getYear());
 
-                        TextView released = (TextView)findViewById(R.id.released);
+                        TextView released = (TextView) findViewById(R.id.released);
                         released.setText("Released: " + s[0].getReleased());
 
-                        TextView runtime = (TextView)findViewById(R.id.runtime);
+                        TextView runtime = (TextView) findViewById(R.id.runtime);
                         runtime.setText("Runtime: " + s[0].getRuntime());
 
-                        TextView genre = (TextView)findViewById(R.id.genre);
+                        TextView genre = (TextView) findViewById(R.id.genre);
                         genre.setText("Genre: " + s[0].getGenre());
 
-                        TextView director = (TextView)findViewById(R.id.director);
+                        TextView director = (TextView) findViewById(R.id.director);
                         director.setText("Director: " + s[0].getDirector());
 
-                        TextView writer = (TextView)findViewById(R.id.writer);
+                        TextView writer = (TextView) findViewById(R.id.writer);
                         writer.setText("Writer: " + s[0].getWriter());
 
-                        ImageView poster = (ImageView)findViewById(R.id.poster2);
+//                        ImageView poster = (ImageView)findViewById(R.id.poster2);
 
-                        Picasso
-                                .with(getApplicationContext())
-                                .load(s[0].getPoster())
-                                .placeholder(R.mipmap.ic_launcher)
-                                .into(poster);
-
-                        //TODO: All attributes of movie
+                        setPoster(s[0].getPoster());
                     }
 
                     @Override
@@ -144,47 +163,32 @@ public class MovieDetailPreview extends AppCompatActivity {
 
                     }
                 });
-            }
-            else {
-                MoviesDatabase db = Room.databaseBuilder(getApplicationContext(),
+            } else {
+                final MoviesDatabase db = Room.databaseBuilder(getApplicationContext(),
                         MoviesDatabase.class, "movies")
                         .build();
 
-                List<Movie> movies = db.movieDao().getById(id);
-                for (Movie m :movies) {
-                    movieTitle = m.getTitle();
-                    year = m.getYear();
+                Movie movie = db.movieDao().getById(id);
 
-//                    sharingIntent = new Intent(android.content.Intent.ACTION_SEND);
-//                    sharingIntent.setType("text/plain");
-//                    String shareBody = "Year: " + year;
-//                    sharingIntent.putExtra(Intent.EXTRA_SUBJECT, movieTitle);
-//                    sharingIntent.putExtra(Intent.EXTRA_TEXT, shareBody);
+                movieTitle = movie.getTitle();
+                movieYear = movie.getYear();
 
-//                    setShareIntentd(sharingIntent);
+                TextView title = (TextView) findViewById(R.id.title);
+                title.setText("Title: " + movieTitle);
 
-                    TextView title = (TextView) findViewById(R.id.title);
-                    title.setText("Title: " + movieTitle);
+                TextView year = (TextView) findViewById(R.id.year);
+                year.setText("Year: " + movieYear);
 
-                    TextView year = (TextView) findViewById(R.id.year);
-                    year.setText("Year: " + year);
-
-                    ImageView poster = (ImageView) findViewById(R.id.poster2);
-
-                    Picasso
-                            .with(getApplicationContext())
-                            .load(m.getPoster())
-                            .placeholder(R.mipmap.ic_launcher)
-                            .into(poster);
-                }
+                setPoster(movie.getPoster());
 
             }
             sharingIntent = new Intent(android.content.Intent.ACTION_SEND);
             sharingIntent.setType("text/plain");
-            String shareBody = "Year: " + year;
+            String shareBody = "Year: " + movieYear;
             sharingIntent.putExtra(android.content.Intent.EXTRA_SUBJECT, movieTitle);
             sharingIntent.putExtra(android.content.Intent.EXTRA_TEXT, shareBody);
             setShareIntentd(sharingIntent);
+
             return null;
         }
     }

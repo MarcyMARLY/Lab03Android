@@ -20,7 +20,7 @@ public interface MovieDao {
     List<Movie> getAll();
 
     @Query("SELECT * FROM movies WHERE id=:id")
-    List<Movie> getById(String id);
+    Movie getById(String id);
 
     @Insert
     void insert(Movie movies);
