@@ -14,7 +14,6 @@ public class ActivityInfoItem extends RecyclerView.ViewHolder {
     public TextView title;
     public TextView year;
 
-
     public ActivityInfoItem(View itemView) {
         super(itemView);
     }

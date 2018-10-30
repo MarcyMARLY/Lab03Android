@@ -17,4 +17,11 @@
 
     <style name="AppTheme.PopupOverlay" parent="ThemeOverlay.AppCompat.Light" />
 
+    <style name="InfoItemImageStyle">
+        <item name="android:adjustViewBounds">false</item>
+        <item name="android:cropToPadding">false</item>
+        <item name="android:src">@mipmap/ic_launcher</item>
+        <item name="android:layout_marginLeft">@dimen/info_item_image_margin_left</item>
+        <item name="android:layout_marginTop">@dimen/info_item_image_margin_top</item>
+    </style>
 </resources>
